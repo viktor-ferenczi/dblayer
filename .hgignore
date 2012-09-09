@@ -1,0 +1,26 @@
+syntax: glob
+
+# Extensions and patterns
+*.wpu
+*.pyc
+*.pyo
+*,cover
+*.coverage
+*.bak
+*.log
+*~
+
+# Specific directories and files
+var
+var/*
+lib/build
+lib/build/*
+lib/dist
+lib/dist/*
+lib/dblayer.egg-info
+lib/dblayer.egg-info/*
+etc/config.py
+
+# Generated files
+lib/dblayer/test/abstraction.py
+lib/dblayer/test/model.gml

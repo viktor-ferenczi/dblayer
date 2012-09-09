@@ -1,0 +1,24 @@
+Metadata-Version: 1.0
+Name: dblayer
+Version: 0.5.0
+Summary: Database Abstraction Layer Generator
+Home-page: http://code.google.com/p/dblayer
+Author: Viktor Ferenczi
+Author-email: viktor@ferenczi.eu
+License: MIT
+Description: Generates database abstraction layer in Python based on a
+             readable definition written as Python classes. Supports
+             defining of tables, basic column types, indexes, 
+             constraints, full text search and complex queries.
+             Provides a light-weight approach of database access with
+             minimal runtime overhead and without any kind of hidden
+             magic, metaclasses or so. Provides maximum possible
+             support for auto completion in Python IDEs.
+Platform: platform independent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Topic :: Database
+Topic :: Software Development :: Code Generators
