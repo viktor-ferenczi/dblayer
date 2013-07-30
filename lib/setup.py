@@ -20,7 +20,7 @@ magic, metaclasses or so. Provides maximum possible
 support for auto completion in Python IDEs.''',
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'Classifier: Operating System :: OS Independent',
+        'Operating System :: OS Independent',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Topic :: Software Development :: Libraries :: Python Modules',
