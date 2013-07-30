@@ -22,6 +22,9 @@ class BaseConstraint(object):
     # Name of the constraint
     # NOTE: Set by __new__ of the table definition class
     name = ''
+    
+    # Indicates that this model object is added implicitly by some other model object
+    implicit = False
 
     @staticmethod
     def sort_key(obj):
@@ -35,14 +38,17 @@ class BaseConstraint(object):
         # Record the definition order
         self.__definition_serial__ = util.get_next_definition_serial()
     
-    def __repr__(self):
+    def __str__(self):
         return '<%s Constraint: %s.%s>' % (
             self.__class__.__name__, 
             self.table_class.__name__ if self.table_class else '?', 
             self.name)
 
-    __str__ = __repr__
-
+    def __repr__(self):
+        return '%s.%s()' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__)
+    
     def clone(self, table):
         """ Clone this constraint for a table instance
         
@@ -69,14 +75,18 @@ class BaseColumnConstraint(BaseConstraint):
         assert columns, 'This constraint must be applied to at least one column!'
         self.columns = columns
     
-    def __repr__(self):
+    def __str__(self):
         return '<%s Constraint: %s.%s on %r>' % (
             self.__class__.__name__, 
             self.table_class.__name__ if self.table_class else '?', 
             self.name,
             tuple(column.name for column in self.columns))
     
-    __str__ = __repr__
+    def __repr__(self):
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            ', '.join(column.name for column in self.columns))
 
     def clone(self, table):
         clone = BaseConstraint.clone(self, table)
@@ -102,3 +112,9 @@ class Check(BaseConstraint):
     def __init__(self, expression):
         BaseConstraint.__init__(self)
         self.expression = expression
+
+    def __repr__(self):
+        return '%s.%s(%r)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            self.expression)

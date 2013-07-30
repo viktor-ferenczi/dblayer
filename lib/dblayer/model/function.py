@@ -10,10 +10,23 @@ class BaseFunction(object):
         assert self.__class__ is not BaseFunction, (
             'Only subclasses of BaseFunction can be instantiated!')
         
-    def __repr__(self):
+    def __str__(self):
         return '<%s%r>' % (self.__class__.__name__, tuple(self.args))
     
-    __str__ = __repr__
+    def __repr__(self):
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            ', '.join(map(repr, self.args)))
+
+### Custom
+
+class Custom(BaseFunction):
+    """ Custom function
+    
+    It is useful for inspected databases, where we don't have expressions in parsed format.
+    
+    """
 
 ### Variable
 

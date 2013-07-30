@@ -23,13 +23,21 @@ class BaseTrigger(object):
     # NOTE: Set by __new__ of the table definition class
     name = ''
     
-    def __repr__(self):
+    # Indicates that this model object is added implicitly by some other model object
+    implicit = False
+    
+    def __str__(self):
         return '<%s Trigger: %s.%s>' % (
             self.__class__.__name__, 
             self.table_class.__name__ if self.table_class else '?', 
             self.name)
     
-    __str__ = __repr__
+    def __repr__(self):
+        return '%s.%s(%r%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            self.procedure_name,
+            ''.join(', %r' % parameter for parameter in self.procedure_parameters))
     
     @staticmethod
     def sort_key(obj):

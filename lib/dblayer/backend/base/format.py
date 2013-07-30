@@ -1,33 +1,12 @@
-""" PostgreSQL database backend
+""" Functions formatting pieces of SQL statements
 """
 
 import datetime
-
-import psycopg2
-import psycopg2.extensions
 
 import dblayer
 from dblayer import constants
 
 NA = constants.NA
-
-### Force returning of unicode string from the database
-
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
-
-### Database errors
-
-Warning = psycopg2.Warning
-Error = psycopg2.Error
-InterfaceError = psycopg2.InterfaceError
-DatabaseError = psycopg2.DatabaseError
-DataError = psycopg2.DataError
-OperationalError = psycopg2.OperationalError
-IntegrityError = psycopg2.IntegrityError
-InternalError = psycopg2.InternalError
-ProgrammingError = psycopg2.ProgrammingError
-NotSupportedError = psycopg2.NotSupportedError
 
 ### Quoting and escaping
 
@@ -36,7 +15,8 @@ def quote_name(name):
     """
     if constants.DEBUG:
         assert '"' not in name, 'Names must not contain double quotes!'
-        assert '\\' not in repr(name), 'Names must not contain special characters need to be escaped!'
+        assert '\\' not in repr(name), (
+            'Names must not contain special characters which need to be escaped!')
     return '"%s"' % name
 
 def quote_alias_name(name, alias):
@@ -90,17 +70,31 @@ def format_default_not_null(column, sql, parameter_list):
         assert isinstance(column, dblayer.model.column.BaseColumn)
         
     if column.default is not None:
-        sql.append('DEFAULT ?')
-        parameter_list.append(column.default)
+        if isinstance(column.default, dblayer.model.function.BaseFunction):
+            sql.append('DEFAULT %s' % format_expression(column.default))
+        else:
+            sql.append('DEFAULT ?')
+            parameter_list.append(column.default)
         
     if not column.null:
         sql.append('NOT NULL')
+        
+def format_custom_column(column):
+    """ Returns column type definition for the given custom column
+    """
+    if constants.DEBUG:
+        assert isinstance(column, dblayer.model.column.Custom)
+        
+    return (column.sql_type, ())
 
 def format_primary_key_column(column):
     """ Returns column type definition for the given primary key column
     """
     if constants.DEBUG:
         assert isinstance(column, dblayer.model.column.PrimaryKey)
+        
+    if column.serial:
+        return ('BIGSERIAL PRIMARY KEY', ())
         
     return ('BIGINT NOT NULL', ())
 
@@ -146,6 +140,42 @@ def format_integer_column(column):
     sql = ' '.join(sql)
     return (sql, tuple(parameter_list))
     
+def format_float_column(column):
+    """ Returns the column type definition for the given float or double column
+    """
+    if constants.DEBUG:
+        assert isinstance(column, dblayer.model.column.Float)
+        
+    sql = []
+    parameter_list = []
+    if column.double:
+        sql = ['DOUBLE PRECISION']
+    else:
+        sql = ['REAL']
+    format_default_not_null(column, sql, parameter_list)
+    sql = ' '.join(sql)
+    return (sql, tuple(parameter_list))
+    
+def format_decimal_column(column):
+    """ Returns the column type definition for the given decimal column
+    """
+    if constants.DEBUG:
+        assert isinstance(column, dblayer.model.column.Decimal)
+        
+    sql = []
+    parameter_list = []
+    if column.precision is not None:
+        if column.scale is not None:
+            sql = ['NUMERIC(%d, %d)' % (column.precision, column.scale)]
+        else:
+            sql = ['NUMERIC(%d)' % column.precision]
+    else:
+        assert not column.scale
+        sql = ['NUMERIC']
+    format_default_not_null(column, sql, parameter_list)
+    sql = ' '.join(sql)
+    return (sql, tuple(parameter_list))
+    
 def format_text_column(column):
     """ Returns the column type definition for the given boolean column
     """
@@ -169,10 +199,10 @@ def format_date_column(column):
         assert isinstance(column, dblayer.model.column.Date)
         
     sql = ['DATE']
-    if not column.null:
-        sql.append('NOT NULL')
+    parameter_list = []
+    format_default_not_null(column, sql, parameter_list)
     sql = ' '.join(sql)
-    return (sql, ())
+    return (sql, tuple(parameter_list))
 
 def format_datetime_column(column):
     """ Returns the column type definition for the given datetime column
@@ -181,17 +211,16 @@ def format_datetime_column(column):
         assert isinstance(column, dblayer.model.column.Datetime)
         
     sql = ['TIMESTAMP WITHOUT TIME ZONE']
-    if not column.null:
-        sql.append('NOT NULL')
+    parameter_list = []
+    format_default_not_null(column, sql, parameter_list)
     sql = ' '.join(sql)
-    return (sql, ())
+    return (sql, tuple(parameter_list))
 
 def format_search_document_column(column):
     """ Returns the column type definition for the given search document column
     """
     if constants.DEBUG:
         assert isinstance(column, dblayer.model.column.SearchDocument)
-        assert column.expression, 'Expression to build up the search document must be given!'
         
     return ('tsvector', ())
 
@@ -206,10 +235,13 @@ def format_column(column):
 
 COLUMN_FORMATTER_MAP = dict(
     # Table columns
+    Custom=format_custom_column,
     PrimaryKey=format_primary_key_column,
     ForeignKey=format_foreign_key_column,
     Boolean=format_boolean_column,
     Integer=format_integer_column,
+    Float=format_float_column,
+    Decimal=format_decimal_column,
     Text=format_text_column,
     Date=format_date_column,
     Datetime=format_datetime_column,
@@ -586,7 +618,7 @@ def format_cross_join_group_list(clauses):
     
     """
     if constants.DEBUG:
-        assert isinstance(clauses, dblayer.base.query.Clauses)
+        assert isinstance(clauses, dblayer.backend.base.clauses.Clauses)
         
     from_list = []
     join_group = []
@@ -636,7 +668,7 @@ def format_select(clauses, cache={}):
     
     """
     if constants.DEBUG:
-        assert isinstance(clauses, dblayer.base.query.Clauses)
+        assert isinstance(clauses, dblayer.backend.base.clauses.Clauses)
         assert clauses.field_list, 'SQL SELECT statements must have a field list!'
         assert clauses.table_list, 'SQL SELECT statements must have source table(s) to select from!'
         
@@ -683,7 +715,7 @@ def format_insert(clauses, cache={}):
     
     """
     if constants.DEBUG:
-        assert isinstance(clauses, dblayer.base.query.Clauses)
+        assert isinstance(clauses, dblayer.backend.base.clauses.Clauses)
         assert clauses.field_list, 'SQL INSERT statements must have a field list!'
         assert not clauses.where, 'SQL INSERT statements do not have a where clause!'
         assert not clauses.group_by, 'SQL INSERT statements do not have a group_by clause!'
@@ -717,7 +749,7 @@ def format_update(clauses, cache={}):
     
     """
     if constants.DEBUG:
-        assert isinstance(clauses, dblayer.base.query.Clauses)
+        assert isinstance(clauses, dblayer.backend.base.clauses.Clauses)
         assert clauses.field_list, 'SQL UPDATE statements must have a field list!'
         assert clauses.where, 'SQL UPDATE statements should have a where clause! (Otherwise they would be dangerous.) Use a TRUE condition if you intentionally want to update all the records.'
         assert not clauses.group_by, 'SQL UPDATE statements do not have a group_by clause!'
@@ -752,7 +784,7 @@ def format_delete(clauses, cache={}):
     
     """
     if constants.DEBUG:
-        assert isinstance(clauses, dblayer.base.query.Clauses)
+        assert isinstance(clauses, dblayer.backend.base.clauses.Clauses)
         assert not clauses.field_list, 'SQL DELETE statements do not have a field list!'
         assert clauses.where, 'SQL DELETE statements should have a where clause! (Otherwise they would be dangerous.) Use a TRUE condition if you intentionally want to delete all the records or truncate the table instead.'
         assert not clauses.group_by, 'SQL DELETE statements do not have a group_by clause!'
@@ -814,6 +846,13 @@ def format_result(result):
 
 ### Functions and aggregates
 
+def format_custom_function(function):
+    if constants.DEBUG:
+        assert isinstance(function, dblayer.model.function.BaseFunction)
+        assert len(function.args) == 1
+
+    return function.args[0]
+    
 def format_var_function(function):
     if constants.DEBUG:
         assert isinstance(function, dblayer.model.function.BaseFunction)
@@ -1065,6 +1104,7 @@ def format_function(function):
 FUNCTION_FORMATTER_MAP = dict(
     
     # Functions
+    Custom=format_custom_function,
     Var=format_var_function,
     Not=format_not_function,
     And=format_and_function,
@@ -1408,7 +1448,7 @@ def format_query(
     # Format order by items
     formatted_order_by = format_order_by(order_by_map, order_by)
         
-    clauses = dblayer.base.query.Clauses(
+    clauses = dblayer.backend.base.clauses.Clauses(
         table_list=table_list,
         field_list=field_list,
         where=where,
@@ -1435,22 +1475,3 @@ def format_order_by(order_by_map, order_by):
             order_by[formatted_order_by.index(None)])
     
     return formatted_order_by
-
-### Detecting insertion of conflicting record IDs
-
-def is_primary_key_conflict(reason):
-    """ Returns True if the exception object might be due to the attempted
-    insertion of a conflicting primary key value. It can give false positives
-    without problems, those only degrade performance in rare exception cases
-    only.
-    """
-    return '__pk' in str(reason)
-
-### Connecting to the database
-
-def connect(dsn, client_encoding='UTF8'):
-    """ Connects to the database server, returns the connection object
-    """
-    connection = psycopg2.connect(dsn)
-    connection.set_client_encoding(client_encoding)
-    return connection

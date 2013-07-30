@@ -77,14 +77,18 @@ class Table(object):
     def __new__(cls):
         # Initialize the class only once
         if not cls._initialized:
+            cls.initialize()
             
-            # Mark the class as initialized
-            cls._initialized = True
-            
-            # Assign name to constraints and indexes and collect them
-            cls._prepare_table_definition()
-                
         return super(Table, cls).__new__(cls)
+    
+    @classmethod
+    def initialize(cls):
+        
+        # Mark the class as initialized
+        cls._initialized = True
+        
+        # Assign name to constraints and indexes and collect them
+        cls._prepare_table_definition()
         
     @classmethod
     def _prepare_table_definition(cls):
@@ -138,21 +142,18 @@ class Table(object):
                     'Attribute name %s.%s collides with implicit %s definition required by %s.%s!' % 
                     (cls.__name__, name, definition.__class__.__name__, cls.__name__, member.name))
                 if isinstance(definition, constraint.BaseConstraint):
-                    definition.name = name
-                    definition.table_class = cls
                     cls._constraint_list.append(definition)
                 elif isinstance(definition, index.BaseIndex):
-                    definition.name = name
-                    definition.table_class = cls
                     cls._index_list.append(definition)
                 elif isinstance(definition, trigger.BaseTrigger):
-                    definition.name = name
-                    definition.table_class = cls
                     cls._trigger_list.append(definition)
                 else:
                     raise TypeError(
                         'Unsupported implicit definition required by %s.%s: %r' % 
                         (cls.__name__, member.name, definition))
+                definition.table_class = cls
+                definition.name = name
+                definition.implicit = True
                 setattr(cls, name, definition)
                 
     def __init__(self):
@@ -203,3 +204,48 @@ class Table(object):
                 (self.__class__.__name__, foreign_key_column._name))
             
         self._referer = foreign_key_column
+
+    @classmethod
+    def pretty_format_class(cls):
+        """ Formats source code defining the table
+        """
+        line_list = ['class %s(table.Table):' % cls.__name__]
+        append_line = line_list.append
+
+        if cls.__doc__:
+            if '\n' in cls.__doc__:
+                append_line('    """%s"""' % cls.__doc__)
+            else:
+                append_line('    """ %s """' % cls.__doc__.strip())
+        else:    
+            append_line('')
+        
+        extra_line_list = []
+        
+        for obj in cls._column_list:
+            if isinstance(obj, column.ForeignKey) and obj.referenced_table_class is cls:
+                obj.referenced_table_class = None
+                append_line('    %s = %s' % (obj.name, obj.full_repr()))
+                obj.referenced_table_class = cls
+                extra_line_list.append('%s.%s.referenced_table_class = %s' % (
+                    cls.__name__, obj.name, cls.__name__))
+            else:
+                append_line('    %s = %s' % (obj.name, obj.full_repr()))
+
+        for obj in cls._constraint_list:
+            if not obj.implicit:
+                append_line('    %s = %r' % (obj.name, obj))
+            
+        for obj in cls._index_list:
+            if not obj.implicit:
+                append_line('    %s = %r' % (obj.name, obj))
+            
+        for obj in cls._trigger_list:
+            if not obj.implicit:
+                append_line('    %s = %r' % (obj.name, obj))
+                
+        if extra_line_list:
+            append_line('')
+            line_list.extend(extra_line_list)
+            
+        return '\n'.join(line_list)

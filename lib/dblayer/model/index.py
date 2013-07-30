@@ -26,6 +26,9 @@ class BaseIndex(object):
     # List of the member columns
     columns = ()
     
+    # Indicates that this model object is added implicitly by some other model object
+    implicit = False
+    
     @staticmethod
     def sort_key(obj):
         return obj.__definition_serial__
@@ -42,14 +45,18 @@ class BaseIndex(object):
         assert columns, 'This index must be applied to at least one column!'
         self.columns = columns
     
-    def __repr__(self):
+    def __str__(self):
         return '<%s Index: %s.%s on %s>' % (
             self.__class__.__name__, 
             self.table_class.__name__ if self.table_class else '?', 
             self.name,
             ', '.join(column.name for column in self.columns))
     
-    __str__ = __repr__
+    def __repr__(self):
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            ', '.join(column.name for column in self.columns))
     
     def clone(self, table):
         """ Clone this index for a table instance

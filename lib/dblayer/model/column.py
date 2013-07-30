@@ -1,11 +1,11 @@
 """ Column types
 """
 
-import decimal
+import datetime, decimal, inspect, itertools, types
 
 import dblayer
 from dblayer import util
-from dblayer.model import index, constraint
+from dblayer.model import index, function, constraint
 
 class BaseColumn(object):
     """ Base class for database column models
@@ -47,12 +47,21 @@ class BaseColumn(object):
     
     # Documentation
     doc = None
-
+    
+    # Exclude these parameters from full repr formatting
+    full_repr_exclude = ()
+    
     @staticmethod
     def sort_key(obj):
         """ Sort key to preserve the lexical definition order
         """
         return obj.__definition_serial__
+    
+    @property
+    def has_custom_default(self):
+        """ Returns True if the column has an SQL expression as its default value
+        """
+        return isinstance(self.default, function.BaseFunction)
     
     def __init__(self, doc=None):
         
@@ -66,10 +75,58 @@ class BaseColumn(object):
         if doc is not None:
             self.doc = doc
         
-    def __repr__(self):
-        return '<%s Column: %s.%s as %s>' % (self.__class__.__name__, self.table_class.__name__ if self.table_class else '?', self.name, self.__class__.__name__)
+    def __str__(self):
+        return '<%s Column: %s.%s as %s>' % (
+            self.__class__.__name__, 
+            self.table_class.__name__ if self.table_class else '?', 
+            self.name, 
+            self.__class__.__name__)
     
-    __str__ = __repr__
+    def __repr__(self):
+        if self.table is None:
+            return self.name
+        return '%s.%s' % (self.table._name, self.name)
+    
+    def full_repr(self):
+        """ Gives the full representation, only for use with class level column definitions
+        """
+        args, varargs, keywords, defaults = inspect.getargspec(self.__init__)
+        
+        arg_iter = iter(args)
+        arg_iter.next()
+        
+        formatted_argument_list = []
+        for i in xrange(len(args) - 1 - len(defaults)):
+            name = arg_iter.next()
+            if name in self.full_repr_exclude:
+                continue
+            value = getattr(self, name)
+            if type(value) == types.TypeType:
+                formatted_argument_list.append('%s' % value.__name__)
+            elif isinstance(value, BaseColumn) and value.table_class is not self.__class__:
+                formatted_argument_list.append(
+                    '%s.%s' % (value.table_class.__name__, value.name))
+            else:
+                formatted_argument_list.append(repr(value))
+                
+        for name, default in itertools.izip(arg_iter, defaults):
+            if name in self.full_repr_exclude:
+                continue
+            value = getattr(self, name)
+            if value == default:
+                continue
+            if type(value) == types.TypeType:
+                formatted_argument_list.append('%s=%s' % (name, value.__name__))
+            elif isinstance(value, BaseColumn) and value.table_class is not self.__class__:
+                formatted_argument_list.append(
+                    '%s=%s.%s' % (name, value.table_class.__name__, value.name))
+            else:
+                formatted_argument_list.append('%s=%r' % (name, value))
+                
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            ', '.join(formatted_argument_list))
     
     def clone(self, table):
         """ Clone this column for a table instance
@@ -88,22 +145,37 @@ class BaseColumn(object):
         
         """
         return []
+    
+class Custom(BaseColumn):
+    """ Custom column type
+    """
+
+    abstract_sql_column_type = 'Custom'
+    
+    def __init__(self, sql_type=None, default=None, null=False, doc=None):
+        self.sql_type = sql_type
+        self.default = default
+        self.null = bool(null)
+        BaseColumn.__init__(self, doc)
 
 class PrimaryKey(BaseColumn):
     """ Primary key column
     """
     
     abstract_sql_column_type = 'PrimaryKey'
-    doc = 'Primary key'
     primary_key = True
     
-    def __init__(self, doc=None):
+    def __init__(self, serial=False, implicit=True, doc=None):
+        self.serial = bool(serial)
+        self.implicit = bool(implicit)
         BaseColumn.__init__(self, doc)
         
         # Move the primary key fields to the top of the column list
         self.__definition_serial__ -= 1000000000
         
     def get_implicit_definition_list_for_table_class(self, table_class):
+        if self.serial or not self.implicit:
+            return []
         return [('pk_%s' % self.name, constraint.PrimaryKey(self))]
     
 class ForeignKey(BaseColumn):
@@ -119,13 +191,17 @@ class ForeignKey(BaseColumn):
     # creating all the database model objects
     referenced_table = None
     
-    def __init__(self, referenced_table_class=None, null=False, doc=None):
+    def __init__(self, referenced_table_class=None, default=None, null=False, implicit=True, doc=None):
         # NOTE: The referenced table class can be set to None and filled later
         self.referenced_table_class = referenced_table_class
-        self.null = null
+        self.default = default
+        self.null = bool(null)
+        self.implicit = bool(implicit)
         BaseColumn.__init__(self, doc)
     
     def get_implicit_definition_list_for_table_class(self, table_class):
+        if not self.implicit:
+            return []
         return [('fk_%s' % self.name, constraint.ForeignKey(self))]
     
 class Boolean(BaseColumn):
@@ -135,7 +211,7 @@ class Boolean(BaseColumn):
     abstract_sql_column_type = 'Boolean'
     
     def __init__(self, default=None, null=False, doc=None):
-        self.default = None if default is None else bool(default)
+        self.default = default
         self.null = bool(null)
         BaseColumn.__init__(self, doc)
     
@@ -150,10 +226,44 @@ class Integer(BaseColumn):
     
     def __init__(self, digits=None, default=None, null=False, doc=None):
         self.digits = int(digits) if digits else None
-        self.default = None if default is None else int(default)
+        self.default = default
         self.null = bool(null)
         BaseColumn.__init__(self, doc)
+        
+class Float(BaseColumn):
+    """ Float column
+    """
     
+    abstract_sql_column_type = 'Float'
+    
+    # True for double precision (8 bytes), False for single precision (4 bytes)
+    size = None
+    
+    def __init__(self, double=True, default=None, null=False, doc=None):
+        self.double = bool(double)
+        self.default = default
+        self.null = bool(null)
+        BaseColumn.__init__(self, doc)
+        
+class Decimal(BaseColumn):
+    """ Decimal column
+    """
+    
+    abstract_sql_column_type = 'Decimal'
+    
+    # Total number of decimal digits (includes both the integer and fractional part)
+    precision = None
+    
+    # Number of digits after the decimal point (fractional part)
+    scale = None
+    
+    def __init__(self, precision=None, scale=None, default=None, null=False, doc=None):
+        self.precision = None if precision is None else int(precision)
+        self.scale = None if scale is None else int(scale)
+        self.default = default
+        self.null = bool(null)
+        BaseColumn.__init__(self, doc)
+        
 class Text(BaseColumn):
     """ Unicode text column
     """
@@ -165,7 +275,7 @@ class Text(BaseColumn):
     
     def __init__(self, maxlength=None, default=None, null=False, doc=None):
         self.maxlength = int(maxlength) if maxlength else None
-        self.default = None if default is None else unicode(default)
+        self.default = default
         self.null = bool(null)
         BaseColumn.__init__(self, doc)
     
@@ -175,7 +285,8 @@ class Date(BaseColumn):
     
     abstract_sql_column_type = 'Date'
     
-    def __init__(self, null=False, doc=None):
+    def __init__(self, default=None, null=False, doc=None):
+        self.default = default
         self.null =  bool(null)
         BaseColumn.__init__(self, doc)
     
@@ -185,7 +296,8 @@ class Datetime(BaseColumn):
     
     abstract_sql_column_type = 'Datetime'
     
-    def __init__(self, null=False, doc=None):
+    def __init__(self, default=None, null=False, doc=None):
+        self.default = default
         self.null =  bool(null)
         BaseColumn.__init__(self, doc)
 
@@ -204,10 +316,14 @@ class SearchDocument(BaseColumn):
     # TODO: Allow for free form expressions using the function module.
     expression = None
     
-    def __init__(self, expression=None, doc=None):
+    def __init__(self, expression=None, implicit=True, doc=None):
         self.expression = expression
-        self.null =  False
+        self.null = False
+        self.implicit = bool(implicit)
         BaseColumn.__init__(self, doc=doc)
 
     def get_implicit_definition_list_for_table_class(self, table_class):
+        if not self.implicit:
+            return []
+        assert self.expression, 'Expression to build up the search document must be given!'        
         return [(self.name + '_index', index.FullTextSearchIndex(*self.expression))]

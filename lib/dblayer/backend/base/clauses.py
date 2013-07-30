@@ -70,7 +70,8 @@ class Clauses(object):
         self.hash_value = None
         
     def __repr__(self):
-        return '%s(%s)' % (
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
             self.__class__.__name__,
             ', '.join(
                 '%s=%r' % (name, value)

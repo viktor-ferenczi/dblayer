@@ -28,15 +28,19 @@ class Query(table.Table):
     def __new__(cls):
         # Initialize the class only once
         if not cls._initialized:
-            
-            # Mark the class as initialized
-            # NOTE: It prevent Table's initialization from being executed, it is intentional
-            cls._initialized = True
-            
-            # Collect objects from the class definition
-            cls._collect_result_condition_list()
+            cls.initialize()
             
         return super(Query, cls).__new__(cls)
+    
+    @classmethod
+    def initialize(cls):
+        
+        # Mark the class as initialized
+        # NOTE: It prevent Table's initialization from being executed, it is intentional
+        cls._initialized = True
+        
+        # Collect objects from the class definition
+        cls._collect_result_condition_list()
     
     @classmethod
     def _collect_result_condition_list(cls):
@@ -137,6 +141,50 @@ class Query(table.Table):
         assert not table_map
         return table_list
 
+    @classmethod
+    def pretty_format_class(cls):
+        """ Formats source code defining the query
+        """
+        if not cls._initialized:
+            cls.initialize()
+            
+        line_list = ['class %s(query.Query):' % cls.__name__]
+        append_line = line_list.append
+
+        if cls.__doc__:
+            if '\n' in cls.__doc__:
+                append_line('    """%s"""' % cls.__doc__)
+            else:
+                append_line('    """ %s """' % cls.__doc__.strip())
+        else:    
+            append_line('')
+
+        for alias, table in sorted(cls._table_map.items()):
+            append_line('    %s = %s()' % (alias, table.__class__.__name__))
+        append_line('')
+        
+        for obj in cls._column_list:
+            append_line('    %s = %s' % (obj.name, obj.full_repr()))
+            
+        append_line('')
+
+        for obj in cls._condition_list:
+            append_line('    %s = %s' % (obj.name, obj.full_repr()))
+
+        append_line('')
+
+        if cls._group_by:
+            append_line('    _group_by = %r' % (cls._group_by, ))
+
+        if cls._order_by:
+            append_line('    _order_by = %r' % (cls._order_by, ))
+            
+        for i in xrange(len(line_list) - 1, 1, -1):
+            if not line_list[i] and not line_list[i - 1]:
+                del line_list[i]
+            
+        return '\n'.join(line_list)
+
 class BaseQueryResult(column.BaseColumn):
     """ Base class for columns used in a query either as a result or a condition
     
@@ -169,6 +217,7 @@ class BaseQueryResult(column.BaseColumn):
         if isinstance(expression, column.BaseColumn):
             assert column_type is None, 'Passing column_type is not required in the case of simple column references!'
             column_type = getattr(expression.table_class, expression.name)
+            self.full_repr_exclude = ('column_type', )
         elif isinstance(expression, index.FullTextSearchIndex):
             column_type = column.Text
         else:

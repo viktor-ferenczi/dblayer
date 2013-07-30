@@ -14,7 +14,7 @@ import time
 
 import dblayer
 from dblayer import constants, util
-from dblayer.base import database, record, query
+from {{backend.__name__}} import database, record
 
 NA = constants.NA
 
@@ -51,9 +51,9 @@ class {{table.__class__.__name__}}Record(record.Record):
     
     # Column information
     _column_name_list = {{tuple(column.name for column in accessible_column_list)}}
-    _quoted_column_name_list = {{tuple(backend.quote_name(column.name) for column in accessible_column_list)}}
+    _quoted_column_name_list = {{tuple(format.quote_name(column.name) for column in accessible_column_list)}}
     _nullable_column_name_set = set({{tuple(column.name for column in accessible_column_list)}})
-    _column_default_map = {{dict((column.name, column.default) for column in accessible_column_list if column.default is not None)}}
+    _column_default_map = {{dict((column.name, column.default) for column in accessible_column_list if column.default is not None and not column.has_custom_default)}}
     
     ### Optimization
     
@@ -63,7 +63,7 @@ class {{table.__class__.__name__}}Record(record.Record):
     
     def __init__(
         self,
-        {{',\n        '.join('%s=%r' % (column.name, column.default) for column in accessible_column_list)}}):
+        {{',\n        '.join('%s=%r' % (column.name, (None if column.has_custom_default else column.default)) for column in accessible_column_list)}}):
         """ Creates {{table.__class__.__name__}} record in memory
         
         %for column in accessible_column_list:
@@ -113,30 +113,24 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     """
 
     # Database backend module, required by the methods in the DatabaseAbstraction base class
-    import {{backend.__name__}} as _backend
+    import {{backend.__name__}}.format as _format
     
-    # Exception classes
-    Warning = _backend.Warning
-    Error = _backend.Error
-    InterfaceError = _backend.InterfaceError
-    DatabaseError = _backend.DatabaseError
-    DataError = _backend.DataError
-    OperationalError = _backend.OperationalError
-    IntegrityError = _backend.IntegrityError
-    InternalError = _backend.InternalError
-    ProgrammingError = _backend.ProgrammingError
-    NotSupportedError = _backend.NotSupportedError
+    # Classes
+    from {{backend.__name__}}.clauses import Clauses
+    from {{backend.__name__}}.error import (
+        Warning, Error, InterfaceError, DatabaseError, DataError, OperationalError, 
+        IntegrityError, InternalError, ProgrammingError, NotSupportedError)
     
     # Constants
     
     # SQL statement for the savepoint set before each indentity insert statement
-    _SQL_IDENTITY_INSERT_SAVEPOINT = {{repr(backend.format_savepoint('before_identity_insert'))}}
+    _SQL_IDENTITY_INSERT_SAVEPOINT = {{repr(format.format_savepoint('before_identity_insert'))}}
     
     # SQL statement to release a savepoint after a successful identity insert
-    _SQL_IDENTITY_INSERT_RELEASE_SAVEPOINT = {{repr(backend.format_release_savepoint('before_identity_insert'))}}
+    _SQL_IDENTITY_INSERT_RELEASE_SAVEPOINT = {{repr(format.format_release_savepoint('before_identity_insert'))}}
     
     # SQL statement for rolling back to the savepoint after a failing insert statement
-    _SQL_IDENTITY_INSERT_ROLLBACK_SAVEPOINT = {{repr(backend.format_rollback_to_savepoint('before_identity_insert'))}}
+    _SQL_IDENTITY_INSERT_ROLLBACK_SAVEPOINT = {{repr(format.format_rollback_to_savepoint('before_identity_insert'))}}
     
     ### Creating in-memory records - override them to provide custom record classes
     
@@ -151,9 +145,9 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     %table_constant_prefix = '_%s' % table_name.upper()
     %accessible_column_list = tuple(column for column in table._column_list if column.accessible)
     %table_column_name_list = tuple(column.name for column in accessible_column_list)
-    %table_quoted_column_list = map(backend.format_expression, accessible_column_list)
-    %table_order_by_map = backend.format_table_order_by_map(table)
-    %table_condition_map = backend.format_table_condition_map(table)
+    %table_quoted_column_list = map(format.format_expression, accessible_column_list)
+    %table_order_by_map = format.format_table_order_by_map(table)
+    %table_condition_map = format.format_table_condition_map(table)
     %if table._creatable:
     def get_{{table._name}}(
         self,
@@ -175,15 +169,15 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
                 raise ValueError('Cannot pass parameter_tuple while searching for a record by its primary key value (id)!')
             %end
             parameter_tuple = (id, )
-            where = '{{backend.quote_name(table._primary_key.name)}} = %s'
+            where = '{{format.quote_name(table._primary_key.name)}} = %s'
             %end
         else:
             if not isinstance(where, basestring):
-                where = self._backend.format_expression(where)
+                where = self._format.format_expression(where)
                 
-        formatted_order_by = self._backend.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
+        formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
         
-        clauses = query.Clauses(
+        clauses = self.Clauses(
             table_list=({{repr(table._table_name)}}, ),
             field_list=self.new_{{table._name}}._quoted_column_name_list,
             where=where,
@@ -210,9 +204,9 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         offset=None):
         """ Retrieves list of {{table.__class__.__name__}} records
         """
-        formatted_order_by = self._backend.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
+        formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
         
-        clauses = query.Clauses(
+        clauses = self.Clauses(
             table_list=({{repr(table._table_name)}}, ),
             field_list=self.new_{{table._name}}._quoted_column_name_list,
             where=where,
@@ -235,11 +229,11 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         """ Iterates on {{table.__class__.__name__}} records
         """
         if not isinstance(where, basestring):
-            where = self._backend.format_expression(where)
+            where = self._format.format_expression(where)
         
-        formatted_order_by = self._backend.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
+        formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
         
-        clauses = query.Clauses(
+        clauses = self.Clauses(
             table_list=({{repr(table._table_name)}}, ),
             field_list=self.new_{{table._name}}._quoted_column_name_list,
             where=where,
@@ -261,34 +255,37 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         """ Counts {{table.__class__.__name__}} records in the database
         """
         if not isinstance(where, basestring):
-            where = self._backend.format_expression(where)
+            where = self._format.format_expression(where)
         
-        clauses = query.Clauses(
+        clauses = self.Clauses(
             table_list=({{repr(table._table_name)}}, ),
             field_list=('COUNT(*)', ),
             where=where)
             
-        sql = self._backend.format_select(clauses)
+        sql = self._format.format_select(clauses)
         
         with self.cursor() as cursor:
             return self.execute_and_fetch_one(cursor, sql)[0]
             
     {{table_constant_prefix}}_TABLE_LIST = [
         ({{repr(table._table_name)}}, {{repr(table_name)}})]
+        
     {{table_constant_prefix}}_FIELD_LIST = [
         %for field_info in table_quoted_column_list:
         {{repr(field_info)}},
         %end
         ]
+        
     {{table_constant_prefix}}_ORDER_BY_MAP = {
         %for name, sql_expression in sorted(table_order_by_map.items()):
         {{repr(name)}}: {{repr(sql_expression)}},
         %end
         }
+        
     {{table_constant_prefix}}_CONDITION_MAP = {
         %for argument_name, condition_info in sorted(table_condition_map.items()):
         %suffix, formatting_function_name, value_expression = condition_info
-        {{repr(argument_name)}}: ({{repr(suffix)}}, _backend.{{formatting_function_name}}, {{repr(value_expression)}}),
+        {{repr(argument_name)}}: ({{repr(suffix)}}, _format.{{formatting_function_name}}, {{repr(value_expression)}}),
         %end
         }
     
@@ -311,7 +308,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{table_constant_prefix}}_TABLE_LIST,
             self.{{table_constant_prefix}}_FIELD_LIST,
             self.{{table_constant_prefix}}_CONDITION_MAP,
@@ -363,7 +360,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{table_constant_prefix}}_TABLE_LIST,
             self.{{table_constant_prefix}}_FIELD_LIST,
             self.{{table_constant_prefix}}_CONDITION_MAP,
@@ -415,7 +412,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{table_constant_prefix}}_TABLE_LIST,
             self.{{table_constant_prefix}}_FIELD_LIST,
             self.{{table_constant_prefix}}_CONDITION_MAP,
@@ -472,7 +469,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
 
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{table_constant_prefix}}_TABLE_LIST,
             ('COUNT(*)', ),
             self.{{table_constant_prefix}}_CONDITION_MAP,
@@ -500,46 +497,52 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
             %end
             
         return row[0]
+        
     %else:
     %query = table
     %query_name = query._name
     %query_constant_prefix = '_%s' % query_name.upper()
     %query_table_list = query.get_table_list()
-    %query_field_list = map(backend.format_result, query._column_list)
-    %query_group_by = map(backend.format_expression, query._group_by)
-    %query_order_by_map = backend.format_query_order_by_map(query)
-    %query_where_condition_map, query_having_condition_map = backend.format_query_condition_map(query)
+    %query_field_list = map(format.format_result, query._column_list)
+    %query_group_by = map(format.format_expression, query._group_by)
+    %query_order_by_map = format.format_query_order_by_map(query)
+    %query_where_condition_map, query_having_condition_map = format.format_query_condition_map(query)
     %condition_name_list = [column.name for column in query._column_list + query._condition_list]
     {{query_constant_prefix}}_TABLE_LIST = [
         %for table_info in query_table_list:
         {{repr(table_info)}},
         %end
         ]
+        
     {{query_constant_prefix}}_FIELD_LIST = [
         %for field_info in query_field_list:
         {{repr(field_info)}},
         %end
         ]
+        
     {{query_constant_prefix}}_GROUP_BY = [
         %for field_info in query_group_by:
         {{repr(field_info)}},
         %end
         ]
+        
     {{query_constant_prefix}}_ORDER_BY_MAP = {
         %for name, sql_expression in sorted(query_order_by_map.items()):
         {{repr(name)}}: {{repr(sql_expression)}},
         %end
         }
+        
     {{query_constant_prefix}}_WHERE_CONDITION_MAP = {
         %for argument_name, condition_info in sorted(query_where_condition_map.items()):
         %suffix, formatting_function_name, value_expression = condition_info
-        {{repr(argument_name)}}: ({{repr(suffix)}}, _backend.{{formatting_function_name}}, {{repr(value_expression)}}),
+        {{repr(argument_name)}}: ({{repr(suffix)}}, _format.{{formatting_function_name}}, {{repr(value_expression)}}),
         %end
         }
+        
     {{query_constant_prefix}}_HAVING_CONDITION_MAP = {
         %for argument_name, condition_info in sorted(query_having_condition_map.items()):
         %suffix, formatting_function_name, value_expression = condition_info
-        {{repr(argument_name)}}: ({{repr(suffix)}}, _backend.{{formatting_function_name}}, {{repr(value_expression)}}),
+        {{repr(argument_name)}}: ({{repr(suffix)}}, _format.{{formatting_function_name}}, {{repr(value_expression)}}),
         %end
         }
     
@@ -564,7 +567,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{query_constant_prefix}}_TABLE_LIST,
             self.{{query_constant_prefix}}_FIELD_LIST,
             self.{{query_constant_prefix}}_WHERE_CONDITION_MAP,
@@ -617,7 +620,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{query_constant_prefix}}_TABLE_LIST,
             self.{{query_constant_prefix}}_FIELD_LIST,
             self.{{query_constant_prefix}}_WHERE_CONDITION_MAP,
@@ -675,7 +678,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
 
         %end
-        sql, parameter_tuple = self._backend.format_query(
+        sql, parameter_tuple = self._format.format_query(
             self.{{query_constant_prefix}}_TABLE_LIST,
             ('COUNT(*)', ),
             self.{{query_constant_prefix}}_WHERE_CONDITION_MAP,
@@ -703,10 +706,10 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
             %end
             
         return row[0]
+        
     %end
-    
     %end
-    
+    %if options.insert:
     ### Inserting into the database
 
     %for table in database._table_list:
@@ -715,16 +718,18 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     def add_{{table._name}}(self, record, generate_id=True):
         """ Inserts single {{table.__class__.__name__}} record into the {{table._name}} database table
         """
-        self.add_record(self.new_{{table._name}}, record, generate_id)
+        self.add_record(self.new_{{table._name}}, record, generate_id, {{repr(table._primary_key.serial)}})
         
     def add_{{table._name}}_list(self, record_list, generate_id=True):
         """ Inserts multiple {{table.__class__.__name__}} records into the {{table._name}} database table
         """
-        self.add_record_list(self.new_{{table._name}}, record_list, generate_id)
+        self.add_record_list(self.new_{{table._name}}, record_list, generate_id, {{repr(table._primary_key.serial)}})
         
     %end
     %end
     %end
+    %end
+    %if options.update:
     ### Updating into the database
 
     %for table in database._table_list:
@@ -743,6 +748,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     %end
     %end
     %end
+    %end
+    %if options.delete:
     ### Deleting from the database
 
     %for table in database._table_list:
@@ -758,29 +765,54 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         """
         self.delete_record_list(self.new_{{table._name}}, record_or_id_list)
         
+    def truncate_{{table._name}}(self):
+        """ Truncates table {{table._name}} in the database
+        """
+        statement_list = {{repr(format.format_truncate_table(table, database))}}
+        with self.cursor() as cursor:
+            self.execute_statement_list(cursor, statement_list)
+        
     %end
     %end
     %end
+    def truncate_all_tables(self):
+        """ Truncates all the tables in the database
+        
+        {{'\n        '.join(table._name for table in reversed(database._table_list) if table._creatable and table._primary_key)}}
+        
+        """
+        statement_list = {{repr(format.format_truncate_table_list(database._table_list, database))}}
+        
+        with self.cursor() as cursor:
+            self.execute_statement_list(cursor, statement_list)
+            
+    %end
+    %if options.create or options.drop:
     ### Creating and dropping stored procedures
     
     %for procedure in database._procedure_list:
+    %if options.create:
     def create_procedure_{{procedure.name}}(self, ignore_errors=False):
         """ Creates stored procedure {{table.__class__.__name__}} in the database
         """
-        statement_list = {{repr(backend.format_create_procedure(procedure))}}
+        statement_list = {{repr(format.format_create_procedure(procedure))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
-        
+            
+    %end
+    %if options.drop:
     def drop_procedure_{{procedure.name}}(self, ignore_errors=False):
         """ Drops stored procedure {{table.__class__.__name__}} from the database
         """
-        statement_list = {{repr(backend.format_drop_procedure(procedure))}}
+        statement_list = {{repr(format.format_drop_procedure(procedure))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
         
     %end
+    %end
     ### Creating and dropping all the stored procedures at once
     
+    %if options.create:
     def create_all_procedures(self, ignore_errors=False):
         """ Creates all the stored procedures into the database
         
@@ -791,6 +823,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         self.create_procedure_{{procedure.name}}(ignore_errors)
         %end
         
+    %end
+    %if options.drop:
     def drop_all_procedures(self, ignore_errors=False):
         """ Drops all the stored procedures from the database
         
@@ -801,32 +835,38 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         self.drop_procedure_{{procedure.name}}(ignore_errors)
         %end
     
+    %end
     ### Creating and dropping triggers
     
     %for table in database._table_list:
     %if table._creatable:
     %for trigger in table._trigger_list:
     %for procedure in database._procedure_list:
+    %if options.create:
     def create_trigger_{{table._name}}_{{trigger.name}}(self, ignore_errors=False):
         """ Creates trigger {{table.__class__.__name__}}.{{trigger.name}} in the database
         """
-        statement_list = {{repr(backend.format_create_trigger(trigger))}}
+        statement_list = {{repr(format.format_create_trigger(trigger))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
-        
+            
+    %end
+    %if options.drop:
     def drop_trigger_{{table._name}}_{{trigger.name}}(self, ignore_errors=False):
         """ Drops trigger {{table.__class__.__name__}}.{{trigger.name}} from the database
         """
-        statement_list = {{repr(backend.format_drop_trigger(trigger))}}
+        statement_list = {{repr(format.format_drop_trigger(trigger))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
         
+    %end
     %end
     %end
     %end
     %end
     ### Creating and dropping the triggers of all the tables at once
     
+    %if options.create:
     def create_all_triggers(self, ignore_errors=False):
         """ Creates the triggers for all the tables in the database
         
@@ -841,6 +881,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         %end
         
+    %end
+    %if options.drop:
     def drop_all_triggers(self, ignore_errors=False):
         """ Drops the triggers for all the tables from the database
         
@@ -855,45 +897,34 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         %end
         
-    ### Creating, dropping and truncating tables
+    %end
+    ### Creating and dropping tables
 
     %for table in database._table_list:
     %if table._creatable:
+    %if options.create:
     def create_table_{{table._name}}(self, ignore_errors=False):
         """ Creates table {{table.__class__.__name__}} in the database
         """
-        statement_list = {{repr(backend.format_create_table(table, database))}}
+        statement_list = {{repr(format.format_create_table(table, database))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
         
     %end
-    %end
-    %for table in database._table_list:
-    %if table._creatable:
+    %if options.drop:
     def drop_table_{{table._name}}(self, ignore_errors=False):
         """ Drops table {{table.__class__.__name__}} from the database
         """
-        statement_list = {{repr(backend.format_drop_table(table, database))}}
+        statement_list = {{repr(format.format_drop_table(table, database))}}
         with self.cursor() as cursor:
             self.execute_statement_list(cursor, statement_list, ignore_errors)
             
     %end
     %end
-    %for table in database._table_list:
-    %if table._writable:
-    %if table._primary_key:
-    def truncate_{{table._name}}(self):
-        """ Truncates table {{table._name}} in the database
-        """
-        statement_list = {{repr(backend.format_truncate_table(table, database))}}
-        with self.cursor() as cursor:
-            self.execute_statement_list(cursor, statement_list)
-        
-    %end
-    %end
     %end
     ### Creating, dropping and truncating all the tables at once
     
+    %if options.create:
     def create_all_tables(self, ignore_errors=False):
         """ Creates all the tables and views into the database
         
@@ -906,6 +937,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         %end
         
+    %end
+    %if options.drop:
     def drop_all_tables(self, ignore_errors=False):
         """ Drops all the tables and views from the database
         
@@ -918,17 +951,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         %end
         %end
         
-    def truncate_all_tables(self):
-        """ Truncates all the tables in the database
-        
-        {{'\n        '.join(table._name for table in reversed(database._table_list) if table._creatable and table._primary_key)}}
-        
-        """
-        statement_list = {{repr(backend.format_truncate_table_list(database._table_list, database))}}
-        
-        with self.cursor() as cursor:
-            self.execute_statement_list(cursor, statement_list)
-            
+    %end
+    %if options.create:
     ### Creating languages
     
     def create_all_languages(self, ignore_errors=True):
@@ -939,8 +963,10 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         self.create_language({{repr(language)}}, ignore_errors)
         %end
 
+    %end
     ### Creating and dropping the database structure
     
+    %if options.create:
     def create_structure(self, ignore_errors=False):
         """ Creates the whole database structure
         """
@@ -950,9 +976,14 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         self.create_all_procedures(ignore_errors)
         self.create_all_triggers(ignore_errors)
         
+    %end
+    %if options.drop:
     def drop_structure(self, ignore_errors=False):
         """ Drops the whole database structure
         """
         self.drop_all_triggers(ignore_errors)
         self.drop_all_procedures(ignore_errors)
         self.drop_all_tables(ignore_errors)
+        
+    %end
+    %end

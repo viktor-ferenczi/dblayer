@@ -1,5 +1,8 @@
-""" Database backends for various relational database servers
+""" Database backends
 
-These moduls contain all the SQL server implementation specific details.
+The base subpackage contains generic implementation can be reused by 
+the SQL server specific backend implementations.
+
+All the other subpackages contain SQL server specific implementations.
 
 """

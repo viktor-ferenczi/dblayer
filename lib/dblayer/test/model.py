@@ -2,8 +2,9 @@
 """
 
 import dblayer
-from dblayer.model import database, table, column, index, constraint, query, aggregate, function, trigger, procedure
-from dblayer.backend import postgresql
+import dblayer.backend.postgresql
+from dblayer.model import database, table, column, index, constraint
+from dblayer.model import query, aggregate, function, trigger, procedure
 from dblayer.test import constants
 
 ### Mixins
@@ -20,7 +21,7 @@ class SlugMixin(object):
 class User(table.Table):
     """ User
     """
-    id = column.PrimaryKey()
+    id = column.PrimaryKey(serial=True)
     email = column.Text(maxlength=150)
     first_name = column.Text(maxlength=150)
     last_name = column.Text(maxlength=150)
@@ -103,9 +104,9 @@ class Invoice(table.Table):
     unique_serial = constraint.Unique(serial)
     seller = column.ForeignKey(User)
     customer = column.ForeignKey(User)
-    net_amount = column.Integer(digits=18)
+    net_amount = column.Decimal(precision=18, scale=2)
     vat_amount = column.Integer(digits=18, default=0)
-    gross_amount = column.Integer(digits=18)
+    gross_amount = column.Decimal(precision=18, scale=2)
     issued_date = column.Date()
     due_date = column.Date()
     paid_date = column.Date(null=True, doc='Date of the last payment which was sufficient to fully pay this invoice in FIFO order.')
@@ -119,10 +120,10 @@ class InvoiceItem(table.Table):
     first_day = column.Date(null=True, doc='First day of service if applicable.')
     last_day = column.Date(null=True, doc='Last day of service if applicable.')
     quantity = column.Integer(digits=9, null=True, doc='Quantity sold if applicable.')
-    net_amount = column.Integer(digits=18)
-    vat_percent = column.Integer(digits=18, default=0)
+    net_amount = column.Decimal(precision=18, scale=2)
+    vat_percent = column.Float(double=False, default=0)
     vat_amount = column.Integer(digits=18, default=0)
-    gross_amount = column.Integer(digits=18)
+    gross_amount = column.Decimal(precision=18, scale=2)
     notes = column.Text(null=True, maxlength=200, doc='Custom notes for this item if any.')
     
 class Payment(table.Table):
@@ -133,6 +134,7 @@ class Payment(table.Table):
     user = column.ForeignKey(User, doc='Actual user paying for the invoice. It should match the user on the invoice.')
     payment_date = column.Date(doc='Effective date of payment.')
     amount = column.Integer(digits=18, doc='Amount payed. It is accounted against the gross amount of the invoice.')
+    commission_percent = column.Float(default=0.0, doc='Commission percentage')
 
 ### Queries
 
@@ -236,10 +238,12 @@ RETURN new;
     
 ### Generate database abstraction layer
 
-def generate():
-    test_database_model = TestDatabaseModel('TestDatabase')
+def generate(module_path='abstraction.py', 
+             database_model_class=TestDatabaseModel, 
+             abstraction_class_name='TestDatabase'):
+    test_database_model = database_model_class(abstraction_class_name)
     # NOTE: Create twice to test single initialization in __new__
-    test_database_model = TestDatabaseModel('TestDatabase')
-    source = test_database_model.generate(postgresql)
-    with open('abstraction.py', 'wb') as module_file:
+    test_database_model = database_model_class(abstraction_class_name)
+    source = test_database_model.generate(dblayer.backend.postgresql)
+    with open(module_path, 'wb') as module_file:
         module_file.write(source)

@@ -1,8 +1,6 @@
 """ Base class for the generated record classes
 """
 
-import itertools
-
 class Record(object):
     """ Base class for the generated record classes
     """
@@ -23,14 +21,15 @@ class Record(object):
     
     ### Optimization
     
-    # Subclasses will define record fields as their own slots
+    # Subclasses will define record fields as slots
     __slots__ = ()
 
     ### Textual representation for logging and debugging
     
     def __repr__(self):
         get_default_field_value = self._column_default_map.get
-        return '%s(%s)' % (
+        return '%s.%s(%s)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
             self.__class__.__name__,
             ', '.join(
                 '%s=%r' % (name, getattr(self, name))

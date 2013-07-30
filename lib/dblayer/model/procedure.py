@@ -36,14 +36,21 @@ class BaseProcedure(object):
         self.result = result
         self.body = body
     
-    def __repr__(self):
+    def __str__(self):
         return '<%s: %s%r returns %s>' % (
             self.__class__.__name__, 
             self.name,
             tuple(self.argument_list),
             self.result)
     
-    __str__ = __repr__
+    def __repr__(self):
+        return '%s.%s(%r, %r, %r, %r)' % (
+            self.__class__.__module__.rsplit('.', 1)[-1],
+            self.__class__.__name__, 
+            self.language, 
+            self.argument_list, 
+            self.result, 
+            self.body)
     
     def clone(self, database):
         """ Clone this procedure for the database instance
