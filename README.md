@@ -4,9 +4,9 @@ Deprecated. Supports only Python 2.7 and PostgreSQL.
 
 ---
 
-Installation, one of:
-* pip install dblayer
-* python setup.py install
+Installation:
+* Using pip: ```pip install dblayer```
+* From source: ```python setup.py install```
 
 Generates source code of a module implementing row classes with slots and a 
 single database abstraction layer class. These classes can be used as is or 
