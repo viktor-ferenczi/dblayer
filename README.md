@@ -1,6 +1,6 @@
 dblayer - Database Abstraction Layer Generator
 
-Deprecated. Supports only Python 2.7 and PostgreSQL.
+Database server support: PostgreSQL
 
 ---
 
@@ -47,7 +47,6 @@ Limitations: The only supported database server is PostgreSQL via the psycopg2
 extension. The generated code works with gevent-psycopg2 as well. No support 
 for defining database views, tablespaces and other database servers yet. No 
 support for inspecting databases (generating the classes defining and existing 
-database) yet. The unit test coverage is still not 100%. No support for 
-Python 3 yet.
+database) yet. The unit test coverage is still not 100%.
 
 Automatically exported from code.google.com/p/dblayer

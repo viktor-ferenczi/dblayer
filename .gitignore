@@ -1,9 +1,6 @@
-syntax: glob
-
-# Extensions and patterns
-*.wpu
-*.pyc
-*.pyo
+.idea
+__pycache__
+*.py[co]
 *,cover
 *.coverage
 *.bak
