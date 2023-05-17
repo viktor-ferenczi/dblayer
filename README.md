@@ -48,5 +48,3 @@ extension. The generated code works with gevent-psycopg2 as well. No support
 for defining database views, tablespaces and other database servers yet. No 
 support for inspecting databases (generating the classes defining and existing 
 database) yet. The unit test coverage is still not 100%.
-
-Automatically exported from code.google.com/p/dblayer
