@@ -4,11 +4,10 @@
 import datetime
 
 import bottle
-
-import dblayer
 from dblayer import constants
 
-class GeneratorOptions(object):
+
+class GeneratorOptions:
     """ Code generation options
     """
     # Generate code for the following operations only
@@ -18,6 +17,7 @@ class GeneratorOptions(object):
     create = True
     drop = True
 
+
 def generate(database, backend, abstraction_class_name, options=None):
     """ Generates database abstraction layer code for the given database
     model using the given database server specific backend module
@@ -26,9 +26,9 @@ def generate(database, backend, abstraction_class_name, options=None):
         options = GeneratorOptions()
     else:
         assert isinstance(options, GeneratorOptions)
-    
-    format = __import__(backend.__name__, fromlist=('format', )).format
-    
+
+    format = __import__(backend.__name__, fromlist=('format',)).format
+
     return ''.join(bottle.template(
         'database',
         template_lookup=[constants.GENERATOR_TEMPLATE_DIRECTORY_PATH],

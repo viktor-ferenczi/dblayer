@@ -21,3 +21,4 @@ etc/config.py
 # Generated files
 lib/dblayer/test/abstraction.py
 lib/dblayer/test/model.gml
+lib/dblayer/test/inspected_*.py

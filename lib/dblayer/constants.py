@@ -1,7 +1,7 @@
 """ Constants
 """
 
-import re, os
+import os
 
 # Enables various sanity checks useful for development
 DEBUG = int(os.environ.get('DBLAYER_DEBUG', 0))
@@ -14,7 +14,7 @@ GENERATOR_TEMPLATE_DIRECTORY_PATH = os.path.join(
     os.path.dirname(__file__), 'generator', 'template')
 
 # Range of database ID values (actual values are chosen randomly)
-DATABASE_ID_RANGE = (2**62, 2**63)
+DATABASE_ID_RANGE = (2 ** 62, 2 ** 63)
 
 # Number of rows should be loaded from the database at once
 CURSOR_ARRAYSIZE = 128
@@ -37,10 +37,14 @@ INNER_JOIN = 'INNER JOIN'
 LEFT_JOIN = 'LEFT JOIN'
 JOIN_TYPES = (INNER_JOIN, LEFT_JOIN)
 
+
 # Undefined singleton, used to detect missing parameters
 # while allowing None as a valid value
-class NA(object):
+class NA:
     def __repr__(self):
         return 'NA'
+
     __str__ = __repr__
+
+
 NA = NA()

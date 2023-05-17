@@ -172,7 +172,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
             where = '{{format.quote_name(table._primary_key.name)}} = %s'
             %end
         else:
-            if not isinstance(where, basestring):
+            if not isinstance(where, str):
                 where = self._format.format_expression(where)
                 
         formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
@@ -228,7 +228,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         offset=None):
         """ Iterates on {{table.__class__.__name__}} records
         """
-        if not isinstance(where, basestring):
+        if not isinstance(where, str):
             where = self._format.format_expression(where)
         
         formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
@@ -254,7 +254,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         parameter_tuple=()):
         """ Counts {{table.__class__.__name__}} records in the database
         """
-        if not isinstance(where, basestring):
+        if not isinstance(where, str):
             where = self._format.format_expression(where)
         
         clauses = self.Clauses(
