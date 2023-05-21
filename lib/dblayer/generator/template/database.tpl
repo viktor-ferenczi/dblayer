@@ -145,7 +145,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     %table_constant_prefix = '_%s' % table_name.upper()
     %accessible_column_list = tuple(column for column in table._column_list if column.accessible)
     %table_column_name_list = tuple(column.name for column in accessible_column_list)
-    %table_quoted_column_list = map(format.format_expression, accessible_column_list)
+    %table_quoted_column_list = list(map(format.format_expression, accessible_column_list))
     %table_order_by_map = format.format_table_order_by_map(table)
     %table_condition_map = format.format_table_condition_map(table)
     %if table._creatable:
@@ -172,7 +172,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
             where = '{{format.quote_name(table._primary_key.name)}} = %s'
             %end
         else:
-            if not isinstance(where, basestring):
+            if not isinstance(where, str):
                 where = self._format.format_expression(where)
                 
         formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
@@ -228,7 +228,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         offset=None):
         """ Iterates on {{table.__class__.__name__}} records
         """
-        if not isinstance(where, basestring):
+        if not isinstance(where, str):
             where = self._format.format_expression(where)
         
         formatted_order_by = self._format.format_order_by(self.{{table_constant_prefix}}_ORDER_BY_MAP, order_by)
@@ -254,7 +254,7 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
         parameter_tuple=()):
         """ Counts {{table.__class__.__name__}} records in the database
         """
-        if not isinstance(where, basestring):
+        if not isinstance(where, str):
             where = self._format.format_expression(where)
         
         clauses = self.Clauses(
@@ -503,8 +503,8 @@ class {{abstraction_class_name}}(database.DatabaseAbstraction):
     %query_name = query._name
     %query_constant_prefix = '_%s' % query_name.upper()
     %query_table_list = query.get_table_list()
-    %query_field_list = map(format.format_result, query._column_list)
-    %query_group_by = map(format.format_expression, query._group_by)
+    %query_field_list = list(map(format.format_result, query._column_list))
+    %query_group_by = list(map(format.format_expression, query._group_by))
     %query_order_by_map = format.format_query_order_by_map(query)
     %query_where_condition_map, query_having_condition_map = format.format_query_condition_map(query)
     %condition_name_list = [column.name for column in query._column_list + query._condition_list]

@@ -1,31 +1,32 @@
 """ Base class for the generated record classes
 """
 
-class Record(object):
+
+class Record:
     """ Base class for the generated record classes
     """
 
     # Name of the corresponding database table storing the actual records
     _table_name = ''
-    
+
     ### Runtime column information
-    
+
     # List of column names
     _column_name_list = ()
-    
+
     # Set of names of nullable columns
     _nullable_column_name_set = set()
-    
+
     # Map of column names to default field values (if there's one)
     _column_default_map = {}
-    
+
     ### Optimization
-    
+
     # Subclasses will define record fields as slots
     __slots__ = ()
 
     ### Textual representation for logging and debugging
-    
+
     def __repr__(self):
         get_default_field_value = self._column_default_map.get
         return '%s.%s(%s)' % (
@@ -35,9 +36,9 @@ class Record(object):
                 '%s=%r' % (name, getattr(self, name))
                 for name in self._column_name_list
                 if getattr(self, name) is not get_default_field_value(name)))
-    
+
     __str__ = __repr__
-    
+
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
             return False
@@ -45,7 +46,7 @@ class Record(object):
             if getattr(self, name) != getattr(other, name):
                 return False
         return True
-    
+
     def finalize(self):
         """ Finalizes the record
         

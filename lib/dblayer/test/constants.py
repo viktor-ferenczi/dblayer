@@ -1,17 +1,13 @@
 """ Test constants
 """
 
-import dblayer
-from dblayer import constants
-
-
 # Enable this to debug rolling back to savepoints on conflicting primary keys
 ##if constants.DEBUG:
 ##    constants.DATABASE_ID_RANGE = (1, 10)
 ##    constants.MAX_INSERT_RETRY_COUNT = 3
 
 # Database to use for testing
-TEST_DSN = ''
+TEST_DSN = "dbname='dblayer' user='dblayer' host='localhost' password='dblayer'"
 
 # Enables dropping of the test tables after running the unit test cases
 LEAVE_CLEAN_DATABASE = True

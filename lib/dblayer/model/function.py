@@ -1,23 +1,26 @@
 """ Functions can be used in result expressions of queries
 """
 
-class BaseFunction(object):
+
+class BaseFunction:
     """ Base class for functions
     """
+
     def __init__(self, *args):
         self.args = args
-        
+
         assert self.__class__ is not BaseFunction, (
             'Only subclasses of BaseFunction can be instantiated!')
-        
+
     def __str__(self):
         return '<%s%r>' % (self.__class__.__name__, tuple(self.args))
-    
+
     def __repr__(self):
         return '%s.%s(%s)' % (
             self.__class__.__module__.rsplit('.', 1)[-1],
-            self.__class__.__name__, 
+            self.__class__.__name__,
             ', '.join(map(repr, self.args)))
+
 
 ### Custom
 
@@ -27,6 +30,7 @@ class Custom(BaseFunction):
     It is useful for inspected databases, where we don't have expressions in parsed format.
     
     """
+
 
 ### Variable
 
@@ -38,6 +42,7 @@ class Var(BaseFunction):
     
     """
 
+
 ### Logical
 
 class Not(BaseFunction):
@@ -46,8 +51,10 @@ class Not(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a):
         BaseFunction.__init__(self, a)
+
 
 class And(BaseFunction):
     """ Logical AND of its parameters
@@ -56,12 +63,14 @@ class And(BaseFunction):
     
     """
 
+
 class Or(BaseFunction):
     """ Logical OR of its parameters
     
     Returns a boolean.
     
     """
+
 
 ### Comparision
 
@@ -71,8 +80,10 @@ class Equal(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class NotEqual(BaseFunction):
     """ True if its two parameters are not equal
@@ -80,8 +91,10 @@ class NotEqual(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class LessThan(BaseFunction):
     """ True if the first parameter is less than the second one
@@ -89,8 +102,10 @@ class LessThan(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class LessThanOrEqual(BaseFunction):
     """ True if the first parameter is less or equal than the second one
@@ -98,8 +113,10 @@ class LessThanOrEqual(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class GreaterThan(BaseFunction):
     """ True if the first parameter is greater than the second one
@@ -107,8 +124,10 @@ class GreaterThan(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class GreaterThanOrEqual(BaseFunction):
     """ True if the first parameter is greater than or equal the second one
@@ -116,8 +135,10 @@ class GreaterThanOrEqual(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class In(BaseFunction):
     """ True if its first parameter is in member of the expression passed as its second parameter
@@ -125,8 +146,10 @@ class In(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 class NotIn(BaseFunction):
     """ True if its first parameter is in member of the expression passed as its second parameter
@@ -134,32 +157,40 @@ class NotIn(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, a, b):
         BaseFunction.__init__(self, a, b)
+
 
 ### Numeric
 
 class Neg(BaseFunction):
     """ Negate a single numeric value
     """
+
     def __init__(self, a):
         BaseFunction.__init__(self, a)
+
 
 class Add(BaseFunction):
     """ Add any number of numeric values
     """
 
+
 class Sub(BaseFunction):
     """ Subtract any number of numeric values from the first one
     """
+
 
 class Mul(BaseFunction):
     """ Multiply any number of numeric values
     """
 
+
 class Div(BaseFunction):
     """ Divide the first numeric value with the subsequent ones
     """
+
 
 # TODO: Pow, Exp, Log, ...
 
@@ -172,14 +203,17 @@ class Concat(BaseFunction):
     
     """
 
+
 class Left(BaseFunction):
     """ Take the leftmost characters of a string (string, count)
     
     Returns a string.
     
     """
+
     def __init__(self, text, length):
         BaseFunction.__init__(self, text, length)
+
 
 class Right(BaseFunction):
     """ Take the rightmost characters of a string (string, count)
@@ -187,8 +221,10 @@ class Right(BaseFunction):
     Returns a string.
     
     """
+
     def __init__(self, text, length):
         BaseFunction.__init__(self, text, length)
+
 
 class Substring(BaseFunction):
     """ Extract substring (string, first_character[, count])
@@ -196,11 +232,13 @@ class Substring(BaseFunction):
     Returns a string.
     
     """
+
     def __init__(self, text, position, length=None):
         if length is None:
             BaseFunction.__init__(self, text, position)
         else:
             BaseFunction.__init__(self, text, position, length)
+
 
 class Contains(BaseFunction):
     """ Checks whether a substring is in text
@@ -208,8 +246,10 @@ class Contains(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, text, substring):
         BaseFunction.__init__(self, text, substring)
+
 
 class Like(BaseFunction):
     """ Checks whether a LIKE pattern matches text
@@ -217,8 +257,10 @@ class Like(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, text, pattern):
         BaseFunction.__init__(self, text, pattern)
+
 
 class NotLike(BaseFunction):
     """ Checks whether a LIKE pattern does not match text
@@ -226,8 +268,10 @@ class NotLike(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, text, pattern):
         BaseFunction.__init__(self, text, pattern)
+
 
 class Match(BaseFunction):
     """ Checks whether a regular expression matches text
@@ -235,8 +279,10 @@ class Match(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, text, pattern):
         BaseFunction.__init__(self, text, pattern)
+
 
 class NotMatch(BaseFunction):
     """ Checks whether a regular expression does not matche text
@@ -244,8 +290,10 @@ class NotMatch(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, text, pattern):
         BaseFunction.__init__(self, text, pattern)
+
 
 class FullTextSearch(BaseFunction):
     """ Performs full text search
@@ -259,8 +307,10 @@ class FullTextSearch(BaseFunction):
     Returns a boolean.
     
     """
+
     def __init__(self, column, pattern):
         BaseFunction.__init__(self, column, pattern)
+
 
 ### Selection
 

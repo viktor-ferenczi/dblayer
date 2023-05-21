@@ -1,43 +1,52 @@
 """ Exception classes (errors)
 """
 
-class Warning(StandardError):
-  """ Database warning 
-  """
 
-class Error(StandardError):
-  """ Base class for error exceptions
-  """
+class Warning(Exception):
+    """ Database warning
+    """
+
+
+class Error(Exception):
+    """ Base class for error exceptions
+    """
+
 
 class InterfaceError(Error):
-  """ Error related to the database interface
-  """
+    """ Error related to the database interface
+    """
+
 
 class DatabaseError(Error):
-  """ Error related to the database engine
-  """
+    """ Error related to the database engine
+    """
+
 
 class DataError(DatabaseError):
-  """ Error related to problems with the processed data 
-  """
+    """ Error related to problems with the processed data
+    """
+
 
 class OperationalError(DatabaseError):
-  """ Error related to database operation (disconnect, memory allocation etc)
-  """
+    """ Error related to database operation (disconnect, memory allocation etc)
+    """
+
 
 class IntegrityError(DatabaseError):
-  """ Error related to database integrity
-  """
+    """ Error related to database integrity
+    """
+
 
 class InternalError(DatabaseError):
-  """ The database encountered an internal error
-  """
+    """ The database encountered an internal error
+    """
+
 
 class ProgrammingError(DatabaseError):
-  """ Error related to database programming (SQL error, table not found etc)
-  """
+    """ Error related to database programming (SQL error, table not found etc)
+    """
+
 
 class NotSupportedError(DatabaseError):
-  """ A method or database API was used which is not supported by the database
-  """
-
+    """ A method or database API was used which is not supported by the database
+    """

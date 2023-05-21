@@ -1,9 +1,6 @@
-syntax: glob
-
-# Extensions and patterns
-*.wpu
-*.pyc
-*.pyo
+.idea
+__pycache__
+*.py[co]
 *,cover
 *.coverage
 *.bak
@@ -24,3 +21,4 @@ etc/config.py
 # Generated files
 lib/dblayer/test/abstraction.py
 lib/dblayer/test/model.gml
+lib/dblayer/test/inspected_*.py

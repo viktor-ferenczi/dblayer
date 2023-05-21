@@ -3,7 +3,8 @@ import setuptools
 # Get version info
 __version__ = None
 __release__ = None
-exec open('dblayer/version.py')
+exec
+open('dblayer/version.py')
 
 setuptools.setup(
     name='dblayer',
@@ -26,7 +27,7 @@ support for auto completion in Python IDEs.''',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Database',
         'Topic :: Software Development :: Code Generators',
-        ],
+    ],
     keywords='python database orm postgresql abstraction layer generator codegeneration performance',
     author='Viktor Ferenczi',
     author_email='viktor@ferenczi.eu',
@@ -40,12 +41,12 @@ support for auto completion in Python IDEs.''',
         'dblayer.graph',
         'dblayer.model',
         'dblayer.test',
-        ],
+    ],
     package_data={
         '': ['template/*.tpl'],
-        },
+    },
     include_package_data=True,
     test_suite='unittest',
     zip_safe=False,
     install_requires=['bottle', 'psycopg2'],
-    )
+)
