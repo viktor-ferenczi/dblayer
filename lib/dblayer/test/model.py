@@ -263,4 +263,4 @@ def generate(module_path='abstraction.py',
     test_database_model = database_model_class(abstraction_class_name)
     source = test_database_model.generate(dblayer.backend.postgresql)
     with open(module_path, 'wt') as module_file:
-        module_file.write(source)
+        module_file.write(source.replace('\r\n', '\n'))

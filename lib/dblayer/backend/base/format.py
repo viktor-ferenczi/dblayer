@@ -1576,7 +1576,7 @@ def format_order_by(order_by_map, order_by):
         assert isinstance(order_by_map, dict)
         assert isinstance(order_by, (tuple, list))
 
-    formatted_order_by = map(order_by_map.get, order_by)
+    formatted_order_by = list(map(order_by_map.get, order_by))
 
     if None in formatted_order_by:
         raise ValueError(
