@@ -58,14 +58,14 @@ class TestAbstraction(unittest.TestCase):
 
     def test_database_session(self):
         db2 = self.abstraction.TestDatabase()
-        self.assert_(not db2.connected)
+        self.assertTrue(not db2.connected)
         with db2.session(test_constants.TEST_DSN):
-            self.assert_(db2.connected)
+            self.assertTrue(db2.connected)
             with db2.transaction():
                 hdd = db2.new_product(name='hdd')
                 db2.add_product(hdd)
-            self.assert_(db2.connected)
-        self.assert_(not db2.connected)
+            self.assertTrue(db2.connected)
+        self.assertTrue(not db2.connected)
 
         with self.db.transaction():
             self.assertEqual(self.db.find_product(name='hdd').id, hdd.id)
@@ -73,13 +73,13 @@ class TestAbstraction(unittest.TestCase):
         # Automatic closing of connection in __del__ in no-error condition
         db3 = self.abstraction.TestDatabase()
         db3.connect(test_constants.TEST_DSN)
-        self.assert_(db3.connected)
+        self.assertTrue(db3.connected)
         del db3
 
         # Automatic closing of connection in __del__ after a database error
         db4 = self.abstraction.TestDatabase()
         db4.connect(test_constants.TEST_DSN)
-        self.assert_(db4.connected)
+        self.assertTrue(db4.connected)
         with db4.cursor() as cursor:
             self.assertRaises(db4.Error, db4.execute, cursor, 'BAD SQL')
         del db4
@@ -257,7 +257,7 @@ class TestAbstraction(unittest.TestCase):
 
         get_result_list = db.get_user_list()
         find_result_list = db.find_user_list()
-        self.assertAlmostEquals(get_result_list, find_result_list)
+        self.assertAlmostEqual(get_result_list, find_result_list)
 
     def modify_data(self, db=None):
         """ Do data modification
@@ -415,9 +415,9 @@ class TestAbstraction(unittest.TestCase):
             try:
                 db.add_group_list([group, group])
             except db.IntegrityError as reason:
-                self.assert_(db.is_primary_key_conflict(reason))
+                self.assertTrue(db.is_primary_key_conflict(reason))
             else:
-                self.assert_(False)
+                self.assertTrue(False)
             db.rollback()
 
             # Verify that other unique constraint conflicts are not misdetected as an ID conflict
@@ -429,10 +429,10 @@ class TestAbstraction(unittest.TestCase):
                     # Conflicting group name, but there's a free ID
                     db.add_group(group_list[1])
                 except db.IntegrityError as reason:
-                    self.assert_(not db.is_primary_key_conflict(reason))
+                    self.assertTrue(not db.is_primary_key_conflict(reason))
                     db.rollback()
                 else:
-                    self.assert_(False)
+                    self.assertTrue(False)
         finally:
             constants.DATABASE_ID_RANGE = (1, 11)
 
@@ -493,13 +493,13 @@ class TestAbstraction(unittest.TestCase):
         with db.transaction():
             # Add a product
             hdd = db.new_product(name='hdd')
-            self.assert_(hdd.last_modified is None)
+            self.assertTrue(hdd.last_modified is None)
             db.add_product(hdd)
 
             # Check whether the last modified time is filled in
             hdd = db.get_product(hdd.id)
             created = hdd.last_modified
-            self.assert_(created)
+            self.assertTrue(created)
 
             # Modify the product
             hdd.model = 'Samsung'
@@ -508,7 +508,7 @@ class TestAbstraction(unittest.TestCase):
 
             # Check whether the last modified time is updated
             hdd = db.get_product(hdd.id)
-            self.assert_(hdd.last_modified >= created)
+            self.assertTrue(hdd.last_modified >= created)
 
         # TODO: Test more triggers
 
@@ -547,8 +547,8 @@ class TestAbstraction(unittest.TestCase):
                 if name.startswith('__'):
                     continue
                 value = getattr(obj, name)
-                self.assert_(repr(value))
-                self.assert_(':' + str(value))
+                self.assertTrue(repr(value))
+                self.assertTrue(':' + str(value))
 
     def test_tuple_dict(self):
         """ Tests whether the field values can be acquired
@@ -571,20 +571,20 @@ class TestAbstraction(unittest.TestCase):
 
         get_result_list = self.db.get_user_list(order_by=('first_name',))
         find_result_list = self.db.find_user_list(order_by=('first_name',))
-        self.assertAlmostEquals(get_result_list, find_result_list)
+        self.assertAlmostEqual(get_result_list, find_result_list)
 
         get_result_list = self.db.get_user_list(order_by=('+first_name',))
         find_result_list = self.db.find_user_list(order_by=('+first_name',))
-        self.assertAlmostEquals(get_result_list, find_result_list)
+        self.assertAlmostEqual(get_result_list, find_result_list)
 
         get_result_list = self.db.get_user_list(order_by=('-first_name',))
         find_result_list = self.db.find_user_list(order_by=('-first_name',))
-        self.assertAlmostEquals(get_result_list, find_result_list)
+        self.assertAlmostEqual(get_result_list, find_result_list)
 
         get_result_list = self.db.get_user_list(order_by=('+id',))
         find_result_list = self.db.find_user_list(order_by=('-id',))
         find_result_list.reverse()
-        self.assertAlmostEquals(get_result_list, find_result_list)
+        self.assertAlmostEqual(get_result_list, find_result_list)
 
     def test_class_formatting(self):
 
@@ -592,7 +592,7 @@ class TestAbstraction(unittest.TestCase):
         namespace = {}
         exec(code, namespace, namespace)
         database_model_class = namespace.get('TestDatabaseModel')
-        self.assert_(issubclass(database_model_class, model.database.Database))
+        self.assertTrue(issubclass(database_model_class, model.database.Database))
 
         with open('abstraction.py', 'rt') as module_file:
             old_source = module_file.read()
@@ -617,7 +617,7 @@ class TestAbstraction(unittest.TestCase):
         
         db = inspector.DatabaseInspector()
         database_class = db.inspect(dsn, 'InspectedDatabase')
-        self.assert_(issubclass(database_class, dblayer.model.database.Database))
+        self.assertTrue(issubclass(database_class, dblayer.model.database.Database))
 
         source = database_class.pretty_format_class()
 
@@ -628,7 +628,7 @@ class TestAbstraction(unittest.TestCase):
         from dblayer.test import inspected_model
 
         inspected_database = inspected_model.InspectedDatabase
-        self.assert_(inspected_database, dblayer.model.database.Database)
+        self.assertTrue(inspected_database, dblayer.model.database.Database)
 
         for table in inspected_database._table_list:
             self.assertIsInstance(table, dblayer.model.table.Table)

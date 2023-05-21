@@ -92,7 +92,9 @@ class BaseColumn:
     def full_repr(self):
         """ Gives the full representation, only for use with class level column definitions
         """
-        args, varargs, keywords, defaults = inspect.getargspec(self.__init__)
+        fullargspec = inspect.getfullargspec(self.__init__)
+        args = fullargspec.args
+        defaults = fullargspec.defaults
 
         arg_iter = iter(args)
         next(arg_iter)
