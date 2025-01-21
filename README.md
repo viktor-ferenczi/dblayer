@@ -18,7 +18,7 @@ extend the row classes to provide properties or helper methods. The generated
 code provides Python IDEs as much information as possible to make code 
 completion useful. 
 
-## Lightweight usage
+## Lightweight
 
 The generated abstraction layer works like an ORM (Object Relational Mapper), 
 but without a direct mapping of row instances to the corresponding database 
@@ -62,7 +62,7 @@ extension. The generated code works with gevent-psycopg2 as well.
 No support for defining database views, tablespaces and other 
 database servers yet. 
 
-No support for inspecting databases (generating the classes defining and 
+No support for inspecting databases (generating the classes defining an 
 existing database) yet. 
 
 The unit test coverage is still not 100%.
