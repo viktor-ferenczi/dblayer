@@ -34,14 +34,14 @@ class GMLExporter:
                     '->' if isinstance(column, column_model.ForeignKey) else '')
                 for column in table._column_list]
             label = '%s\n\n%s' % (title, '\n'.join(column_label_list))
-            g.add_node(id(table), label=label)
+            g.add_node(table._name)
 
         for table in model._table_list:
             for fk_column in table._column_list:
                 if isinstance(fk_column, column_model.ForeignKey):
                     g.add_edge(
-                        id(table),
-                        id(fk_column.referenced_table),
+                        table._name,
+                        fk_column.referenced_table._name,
                         label=fk_column.name)
 
         networkx.write_gml(g, filepath)

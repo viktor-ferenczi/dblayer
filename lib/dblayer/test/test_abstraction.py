@@ -603,7 +603,7 @@ class TestAbstraction(unittest.TestCase):
             new_source = module_file.read()
 
         # Ignore the module docstring, since that contains a timestamp
-        RX_TIMESTAMP = re.compile('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
+        RX_TIMESTAMP = re.compile(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
         old_source = RX_TIMESTAMP.subn('<TIMESTAMP>', old_source)[1]
         new_source = RX_TIMESTAMP.subn('<TIMESTAMP>', new_source)[1]
 
