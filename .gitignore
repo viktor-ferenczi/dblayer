@@ -6,6 +6,7 @@ __pycache__
 *.bak
 *.log
 *~
+uv.lock
 
 # Specific directories and files
 var
